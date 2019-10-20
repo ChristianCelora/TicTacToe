@@ -164,6 +164,11 @@ function createModel(){
   	return model;
 }
 
+function trainModel(model){
+	model.fit(train_data, expected_out, {epochs: 3});
+	return model;
+}
+
 function next_move(model, input){
 	const next_move = model.predict(input);
   	return next_move.arraySync();	// array() ritorna una promise
