@@ -14,6 +14,11 @@ $(document).ready(function(){
 	 			printCell(pos+1, "<h1>X</h1>");
 	 			winner = game.checkWinner();
 	 			if(winner == null){	// Game not over
+	 				// minimax move
+	 				console.log(game.getBoard());
+	 				correct_move = minimax(game.getBoard(), 0, -1);
+				 	console.log("mossa (corretta) minimax ");
+				 	console.log(correct_move);
 					botTurn(game);
 					winner = game.checkWinner();
 				}	
@@ -28,7 +33,7 @@ $(document).ready(function(){
  	$("#reset-board").click(function(){
  		game.reset();
  		for(i in game.getBoard()){
- 			printCell(i, "");
+ 			printCell(parseInt(i)+1, "");
  		}
  		$("#winner").html("");
  	});
@@ -63,6 +68,13 @@ class TicTacToe{
 		return this.board;
 	}
 
+	setBoard(new_board){
+		for (var i = 0; i < this.board.length; i++) {
+			this.board[i] = parseInt(new_board[i]);
+		}
+	}
+
+	/** @return  1 = player1, -1 = player2, 0 draw */
 	checkWinner(){
 		// Check winner
 		if(Math.abs(this.board[0]+this.board[3]+this.board[6]) == 3){			// Columns
@@ -93,9 +105,9 @@ class TicTacToe{
 		let sum = 0;
 		for (var i = 0; i < this.board.length; i++) {
 			if(this.board[i] == 0) break;
-			sum += Math.abs(this.board[i])
+			sum += Math.abs(this.board[i]);
 		}
-		if( sum == 9){
+		if(sum == 9){
 			return 0; 
 		}
 		return null;	// Game still going
@@ -120,6 +132,18 @@ class TicTacToe{
 	reset(){
 		this.board = [0,0,0,0,0,0,0,0,0];
 		this.game_end = false;
+	}
+
+	getAvailableMoves(player){
+		let possible_moves = [];
+		for (var i = 0; i < this.board.length; i++) {
+			if(this.board[i] == 0){
+				let copy_board = this.board.slice();
+				copy_board[i] = player;
+				possible_moves.push(copy_board);
+			}
+		}
+		return possible_moves;
 	}
 }
 
@@ -172,4 +196,49 @@ function trainModel(model){
 function next_move(model, input){
 	const next_move = model.predict(input);
   	return next_move.arraySync();	// array() ritorna una promise
+}
+
+possible_reality = new TicTacToe();
+function minimax(board, depth, player_turn){
+	possible_reality.setBoard(board);
+	if(score = possible_reality.checkWinner() != null)
+			return {score:score*10};
+
+	var scores = [];
+	var moves = [];
+	var available_moves = possible_reality.getAvailableMoves(player_turn);
+
+	depth++;
+	player_turn *= -1;
+
+	if(depth-1 == 0)
+		console.log(available_moves);
+	for(move of available_moves){
+		var board = move;
+		var choice = minimax(board,depth, player_turn);
+		if(choice.score != null){
+			scores.push(choice.score);
+			moves.push(board);
+		}
+	}
+
+	if(depth-1 == 0)
+		console.log(moves);
+
+	// get min calculation
+	min_score = scores[0];
+	let min_score_moves = [];
+	let min_score_index = 10000000;
+	for (var i = 1; i < scores.length; i++) {
+		if(min_score > scores[i]){
+			min_score = scores[i];
+			min_score_index = i;
+			min_score_moves = [moves[i]];
+		}else if (min_score == scores[i]){
+			min_score_moves.push(moves[i]);
+			min_score_index = i;
+		}
+	}
+	//console.log(scores);
+	return {score:scores[min_score_index], move:min_score_moves};
 }
