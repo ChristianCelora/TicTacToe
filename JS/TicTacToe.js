@@ -15,11 +15,9 @@ $(document).ready(function(){
 	 			winner = game.checkWinner();
 	 			if(winner == null){	// Game not over
 	 				// minimax move
-	 				console.log(game.getBoard());
-	 				correct_move = minimax(game.getBoard(), 0, -1);
-				 	console.log("mossa (corretta) minimax ");
-				 	console.log(correct_move);
+	 				optimal_move = getOptimalMove(game);
 					botTurn(game);
+					trainModel(model, game.getBoard(), optimal_move);
 					winner = game.checkWinner();
 				}	
 				printResults(winner);
@@ -147,6 +145,21 @@ class TicTacToe{
 	}
 }
 
+function getOptimalMove(game){
+	var board = game.getBoard();
+	optimal_board = minimax(board, 0, -1);
+	//return getMove(board, optimal_board); 	
+	return optimal_board;
+}
+
+/*function getMove(old_board, new_board){
+	for (var i = 0; i < old_board.length; i++) {
+		if(old_board[i] != new_board[i]){
+			return i;
+		}
+	}
+	return -1;
+}*/
 /* AI */
 function botTurn(game){
 	let board = game.getBoard();
@@ -188,8 +201,11 @@ function createModel(){
   	return model;
 }
 
-function trainModel(model){
-	model.fit(train_data, expected_out, {epochs: 3});
+function trainModel(model, actual_choice, opt_choice){
+	const train_data = tf.tensor2d([actual_choice]);
+	const expected_out = tf.tensor2d([opt_choice]);
+	const h = model.fit(train_data, expected_out, {epochs: 3});
+	console.log("Loss: "+h.history.loss[0]);
 	return model;
 }
 
