@@ -148,8 +148,7 @@ class TicTacToe{
 function getOptimalMove(game){
 	var board = game.getBoard();
 	optimal_board = minimax(board, 0, -1);
-	//return getMove(board, optimal_board); 	
-	return optimal_board;
+	return optimal_board.move[0];	// For now choose only the first move
 }
 
 /*function getMove(old_board, new_board){
@@ -201,10 +200,10 @@ function createModel(){
   	return model;
 }
 
-function trainModel(model, actual_choice, opt_choice){
+async function trainModel(model, actual_choice, opt_choice){
 	const train_data = tf.tensor2d([actual_choice]);
 	const expected_out = tf.tensor2d([opt_choice]);
-	const h = model.fit(train_data, expected_out, {epochs: 3});
+	const h = await model.fit(train_data, expected_out, {epochs: 3});
 	console.log("Loss: "+h.history.loss[0]);
 	return model;
 }
@@ -227,8 +226,6 @@ function minimax(board, depth, player_turn){
 	depth++;
 	player_turn *= -1;
 
-	if(depth-1 == 0)
-		console.log(available_moves);
 	for(move of available_moves){
 		var board = move;
 		var choice = minimax(board,depth, player_turn);
@@ -237,9 +234,6 @@ function minimax(board, depth, player_turn){
 			moves.push(board);
 		}
 	}
-
-	if(depth-1 == 0)
-		console.log(moves);
 
 	// get min calculation
 	min_score = scores[0];
@@ -255,6 +249,6 @@ function minimax(board, depth, player_turn){
 			min_score_index = i;
 		}
 	}
-	//console.log(scores);
+
 	return {score:scores[min_score_index], move:min_score_moves};
 }
