@@ -7,7 +7,7 @@ $(document).ready(function(){
   	game = new TicTacToe();
 
  	$(".cell").click(function(){
- 		if(!game.isended()){
+ 		if(!game.isEnded()){
 	 		let pos = $(this).data("pos") - 1;
 	 		if(game.isCellFree(pos)){	// Input is valid
 	 			game.setCell(pos, 1);
@@ -16,7 +16,7 @@ $(document).ready(function(){
 	 			if(winner == null){	// Game not over
 	 				// minimax move
 	 				optimal_move = getOptimalMove(game);
-					botTurn(game);
+					botTurn(game, true);
 					trainModel(model, game.getBoard(), optimal_move);
 					winner = game.checkWinner();
 				}	
@@ -28,6 +28,30 @@ $(document).ready(function(){
 	 	}
  	});
 
+ 	$("#auto-train").click(async function(){
+ 		$("#train-progress").html("training started");
+ 		const n_rounds = $(this).data("rounds");
+ 		for (var i = 0; i < n_rounds; i++){	// train for 50 games against minimax algorithm
+  			training_ground = new TicTacToe();
+ 			while(!training_ground.isEnded()){
+ 				// Minimax trainer
+ 				optimal_move = getOptimalMove(training_ground);
+ 				training_ground.setBoard(optimal_move);
+ 				if(training_ground.checkWinner() != null)
+ 					break;
+ 				// Bot
+ 				optimal_move = getOptimalMove(training_ground);
+				botTurn(training_ground, false);
+				// Training
+				const c = await trainModel(model, training_ground.getBoard(), optimal_move);
+				if(training_ground.checkWinner() != null)
+ 					break;
+ 			}
+ 			$("#train-progress").html("progress: "+i+"/"+n_rounds);
+ 		}
+ 		$("#train-progress").html("training ended");
+ 	});
+
  	$("#reset-board").click(function(){
  		game.reset();
  		for(i in game.getBoard()){
@@ -35,6 +59,8 @@ $(document).ready(function(){
  		}
  		$("#winner").html("");
  	});
+
+
 });
 
 function printCell(index, html){
@@ -119,7 +145,7 @@ class TicTacToe{
 		this.board[pos] = val;
 	}
 
-	isended(){
+	isEnded(){
 		return this.game_end;
 	}
 
@@ -160,7 +186,7 @@ function getOptimalMove(game){
 	return -1;
 }*/
 /* AI */
-function botTurn(game){
+function botTurn(game, print_cell){
 	let board = game.getBoard();
 	const input_board = tf.tensor2d([board]);
 
@@ -179,9 +205,10 @@ function botTurn(game){
   	if(choosen_cell != -1){
   		game.setCell(choosen_cell, -1);
   	}
- 	console.log("mossa AI nella cella "+(choosen_cell+1));
 
- 	printCell(choosen_cell+1, "<h1>O</h1>"); 	
+ 	if(print_cell){
+ 		printCell(choosen_cell+1, "<h1>O</h1>"); 	
+ 	}
 }
 
 function createModel(){
@@ -205,7 +232,6 @@ async function trainModel(model, actual_choice, opt_choice){
 	const expected_out = tf.tensor2d([opt_choice]);
 	const h = await model.fit(train_data, expected_out, {epochs: 3});
 	console.log("Loss: "+h.history.loss[0]);
-	return model;
 }
 
 function next_move(model, input){
