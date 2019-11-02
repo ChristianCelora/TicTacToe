@@ -3,7 +3,7 @@ $(document).ready(function(){
 
 	model = createModel();
   	game = new TicTacToe();
-  	memo = {}
+  	minimax_memo = {};
 
  	$(".cell").click(function(){
  		if(!game.isEnded()){
@@ -32,20 +32,27 @@ $(document).ready(function(){
  		const n_rounds = $("input[name='auto-train-rounds'").val();
  		for (var i = 0; i < n_rounds; i++){	// train for 50 games against minimax algorithm
   			training_ground = new TicTacToe();
+  			first = true;
  			while(!training_ground.isEnded()){
  				// Minimax trainer ( with chaching )
  				let cache_key = training_ground.getBoard().join("");
- 				if(cache_key in memo){
- 					optimal_move = memo[cache_key];
- 				}else{
- 					optimal_move = getOptimalMove(training_ground);
- 					memo[cache_key] = optimal_move;
- 				}
+ 				if (first){	// First move is rand
+	 				rand_move = Math.random()*9 + 1;
+	 				optimal_move = training_ground.getBoard();
+	 				optimal_move[rand_move] = 1;
+	 				first = false;
+	 			}else{
+	 				if(cache_key in minimax_memo){
+	 					optimal_move = minimax_memo[cache_key];
+	 				}else{
+	 					optimal_move = getOptimalMove(training_ground);
+	 					minimax_memo[cache_key] = optimal_move;
+	 				}
+	 			}
  				training_ground.setBoard(optimal_move);
  				if(training_ground.checkWinner() != null)
  					break;
  				// Bot
- 				optimal_move = getOptimalMove(training_ground);
 				botTurn(training_ground, false);
 				// Training
 				const c = await trainModel(model, training_ground.getBoard(), optimal_move);
@@ -54,6 +61,7 @@ $(document).ready(function(){
  			}
  			$("#train-progress").html("progress: "+i+"/"+n_rounds);
  		}
+ 		minimax_memo = {};	// Clear cache
  		$("#train-progress").html("training ended");
  	});
 
@@ -182,6 +190,12 @@ class TicTacToe{
 function getOptimalMove(game){
 	var board = game.getBoard();
 	optimal_board = minimax(board, 0, -1);
+	if(cache_key in minimax_memo){
+	 					optimal_move = minimax_memo[cache_key];
+	 				}else{
+	 					optimal_move = getOptimalMove(training_ground);
+	 					minimax_memo[cache_key] = optimal_move;
+	 				}
 	return optimal_board.move[0];	// For now choose only the first move
 }
 
