@@ -1,10 +1,9 @@
 
 $(document).ready(function(){
-	console.log("TICTACTOE");
 
 	model = createModel();
-
   	game = new TicTacToe();
+  	memo = {}
 
  	$(".cell").click(function(){
  		if(!game.isEnded()){
@@ -30,12 +29,18 @@ $(document).ready(function(){
 
  	$("#auto-train").click(async function(){
  		$("#train-progress").html("training started");
- 		const n_rounds = $(this).data("rounds");
+ 		const n_rounds = $("input[name='auto-train-rounds'").val();
  		for (var i = 0; i < n_rounds; i++){	// train for 50 games against minimax algorithm
   			training_ground = new TicTacToe();
  			while(!training_ground.isEnded()){
- 				// Minimax trainer
- 				optimal_move = getOptimalMove(training_ground);
+ 				// Minimax trainer ( with chaching )
+ 				let cache_key = training_ground.getBoard().join("");
+ 				if(cache_key in memo){
+ 					optimal_move = memo[cache_key];
+ 				}else{
+ 					optimal_move = getOptimalMove(training_ground);
+ 					memo[cache_key] = optimal_move;
+ 				}
  				training_ground.setBoard(optimal_move);
  				if(training_ground.checkWinner() != null)
  					break;
@@ -60,7 +65,13 @@ $(document).ready(function(){
  		$("#winner").html("");
  	});
 
+ 	$("#export-model").click(function(){
+ 		saveModel(model);
+ 	});
 
+ 	$("#import-model").click(function(){
+ 		importModel(model);
+ 	});
 });
 
 function printCell(index, html){
@@ -68,7 +79,6 @@ function printCell(index, html){
 }
 
 function printResults(winner){
-	console.log("winner: "+winner);
 	if(winner != null){
 		if( winner > 0 ){
 			$("#winner").html("Player Wins!");
@@ -79,8 +89,6 @@ function printResults(winner){
 		}
 	}
 }
-
-
 
 class TicTacToe{
 	constructor(){
@@ -191,7 +199,6 @@ function botTurn(game, print_cell){
 	const input_board = tf.tensor2d([board]);
 
   	predict_board = next_move(model, input_board);
-  	console.log(predict_board[0]);
 
   	let move = -100;
   	let choosen_cell = -1;
@@ -223,15 +230,13 @@ function createModel(){
   	const opt = tf.train.adam(0.1); // Test
   	model.compile({optimizer: opt, loss: "meanSquaredError"});
 
-  	console.log(model.summary());
   	return model;
 }
 
 async function trainModel(model, actual_choice, opt_choice){
 	const train_data = tf.tensor2d([actual_choice]);
 	const expected_out = tf.tensor2d([opt_choice]);
-	const h = await model.fit(train_data, expected_out, {epochs: 3});
-	console.log("Loss: "+h.history.loss[0]);
+	const h = await model.fit(train_data, expected_out, {epochs: 1});
 }
 
 function next_move(model, input){
@@ -239,14 +244,34 @@ function next_move(model, input){
   	return next_move.arraySync();	// array() ritorna una promise
 }
 
+async function saveModel(model){
+	const saveResults = await model.save('downloads://my-model-1');
+}
+
+async function importModel(model){
+	const uploadJSONInput = document.getElementById("upload-model");
+	const uploadWeightsInput = document.getElementById("upload-weights");
+	const model_up = await tf.loadLayersModel(tf.io.browserFiles(
+			[uploadJSONInput.files[0], uploadWeightsInput.files[0]]));
+	copyWeights(model, model_up);
+}
+
+function copyWeights(model, model_up){
+	for (let i = 0; i < model.layers.length; i++) {
+		model.layers[i].setWeights(model_up.layers[i].getWeights());
+	}
+}
+
+/** Minimax Algorithm */
 possible_reality = new TicTacToe();
 function minimax(board, depth, player_turn){
 	possible_reality.setBoard(board);
 	if(score = possible_reality.checkWinner() != null)
-			return {score:score*10};
+			return {score:score*10, depth:depth};
 
 	var scores = [];
 	var moves = [];
+	var depths = [];
 	var available_moves = possible_reality.getAvailableMoves(player_turn);
 
 	depth++;
@@ -258,12 +283,15 @@ function minimax(board, depth, player_turn){
 		if(choice.score != null){
 			scores.push(choice.score);
 			moves.push(board);
+			depths.push(choice.depth);
 		}
 	}
 
 	// get min calculation
 	min_score = scores[0];
+	let min_depth = 11;
 	let min_score_moves = [];
+	let min_score_depth = [];
 	let min_score_index = 10000000;
 	for (var i = 1; i < scores.length; i++) {
 		if(min_score > scores[i]){
@@ -271,10 +299,14 @@ function minimax(board, depth, player_turn){
 			min_score_index = i;
 			min_score_moves = [moves[i]];
 		}else if (min_score == scores[i]){
-			min_score_moves.push(moves[i]);
-			min_score_index = i;
+			if(depths[i] < min_depth){
+				min_score_depth.push(min_depth);
+				min_score_moves.push(moves[i]);
+				min_score_index = i;
+				min_depth = depths[i];
+			}
 		}
 	}
 
-	return {score:scores[min_score_index], move:min_score_moves};
+	return {score:scores[min_score_index], move:min_score_moves, depth:min_depth};
 }
