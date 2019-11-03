@@ -284,24 +284,21 @@ function copyWeights(model, model_up){
 }
 
 /** Minimax Algorithm */
-possible_reality = new TicTacToe();
 function minimax(board, depth, player_turn){
+	let possible_reality = new TicTacToe();
 	possible_reality.setBoard(board);
 	if(score = possible_reality.checkWinner() != null)
 			return {score:score*10, depth:depth};
 
-	depth++;
-	player_turn *= -1;
-	
 	var bestMove = null;
 	var bestDepth = 11;
 	var available_moves = possible_reality.getAvailableMoves(player_turn);
 
-	if(player_turn > 0){
+	if( player_turn > 0){
 		bestScore = -10000000;
 		for(move of available_moves){
 			var board = move;
-			var choice = minimax(board,depth, player_turn);
+			var choice = minimax(board,depth+1, player_turn*-1);
 			if(choice.score > bestScore){
 				bestScore = choice.score;
 				bestDepth = choice.depth;
@@ -318,7 +315,7 @@ function minimax(board, depth, player_turn){
 		bestScore = 10000000;
 		for(move of available_moves){
 			var board = move;
-			var choice = minimax(board,depth, player_turn);
+			var choice = minimax(board,depth+1, player_turn*-1);
 			if(choice.score < bestScore){
 				bestScore = choice.score;
 				bestDepth = choice.depth;
