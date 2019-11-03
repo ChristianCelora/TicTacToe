@@ -39,7 +39,8 @@ $(document).ready(function(){
  				if (first){	// First move is rand
 	 				rand_move = Math.random()*9 + 1;
 	 				optimal_move = training_ground.getBoard();
-	 				optimal_move[rand_move] = 1;
+	 				//optimal_move[rand_move] = 1;
+	 				optimal_move[5] = 1;
 	 				first = false;
 	 			}else{
 	 				if(cache_key in minimax_memo){
@@ -190,12 +191,6 @@ class TicTacToe{
 function getOptimalMove(game){
 	var board = game.getBoard();
 	optimal_board = minimax(board, 0, -1);
-	if(cache_key in minimax_memo){
-	 					optimal_move = minimax_memo[cache_key];
-	 				}else{
-	 					optimal_move = getOptimalMove(training_ground);
-	 					minimax_memo[cache_key] = optimal_move;
-	 				}
 	return optimal_board.move[0];	// For now choose only the first move
 }
 
@@ -212,16 +207,24 @@ function botTurn(game, print_cell){
 	let board = game.getBoard();
 	const input_board = tf.tensor2d([board]);
 
-  	predict_board = next_move(model, input_board);
+  	//predict_board = next_move(model, input_board);
+  	predict_board = getOptimalMove(game);	// Test
+  	console.log(predict_board);
 
   	let move = -100;
   	let choosen_cell = -1;
-  	for(i=0; i< board.length; i++){
-  		if( predict_board[0][i] > move && board[i] == 0 ){
+  	for(i = 0; i < board.length; i++){
+  		/*if( predict_board[0][i] > move && board[i] == 0 ){
   			move = predict_board[0][i];
   			choosen_cell = i;
+  		*/
+  		if( predict_board[i] != board[i]){
+  			choosen_cell = i;
+  			break;
   		}
   	}
+
+  	console.log(choosen_cell);
 
   	if(choosen_cell != -1){
   		game.setCell(choosen_cell, -1);
@@ -235,8 +238,11 @@ function botTurn(game, print_cell){
 function createModel(){
 	const model = tf.sequential();
 
-	const hidden = tf.layers.dense({units: 4, inputShape: [9], activation: "sigmoid"})
-  	model.add(hidden);
+	const hidden_1 = tf.layers.dense({units: 27, inputShape: [9], activation: "sigmoid"})
+  	model.add(hidden_1);
+
+  	//const hidden_2 = tf.layers.dense({units: 4, inputShape: [5], activation: "sigmoid"})
+  	//model.add(hidden_2);
 
 	const output = tf.layers.dense({units: 9, activation: "sigmoid"})
   	model.add(output);
@@ -250,7 +256,8 @@ function createModel(){
 async function trainModel(model, actual_choice, opt_choice){
 	const train_data = tf.tensor2d([actual_choice]);
 	const expected_out = tf.tensor2d([opt_choice]);
-	const h = await model.fit(train_data, expected_out, {epochs: 1});
+	const h = await model.fit(train_data, expected_out, {epochs: 3});
+	console.log("Loss: "+h.history.loss[0]);
 }
 
 function next_move(model, input){
@@ -283,44 +290,48 @@ function minimax(board, depth, player_turn){
 	if(score = possible_reality.checkWinner() != null)
 			return {score:score*10, depth:depth};
 
-	var scores = [];
-	var moves = [];
-	var depths = [];
-	var available_moves = possible_reality.getAvailableMoves(player_turn);
-
 	depth++;
 	player_turn *= -1;
+	
+	var bestMove = null;
+	var bestDepth = 11;
+	var available_moves = possible_reality.getAvailableMoves(player_turn);
 
-	for(move of available_moves){
-		var board = move;
-		var choice = minimax(board,depth, player_turn);
-		if(choice.score != null){
-			scores.push(choice.score);
-			moves.push(board);
-			depths.push(choice.depth);
-		}
-	}
-
-	// get min calculation
-	min_score = scores[0];
-	let min_depth = 11;
-	let min_score_moves = [];
-	let min_score_depth = [];
-	let min_score_index = 10000000;
-	for (var i = 1; i < scores.length; i++) {
-		if(min_score > scores[i]){
-			min_score = scores[i];
-			min_score_index = i;
-			min_score_moves = [moves[i]];
-		}else if (min_score == scores[i]){
-			if(depths[i] < min_depth){
-				min_score_depth.push(min_depth);
-				min_score_moves.push(moves[i]);
-				min_score_index = i;
-				min_depth = depths[i];
+	if(player_turn > 0){
+		bestScore = -10000000;
+		for(move of available_moves){
+			var board = move;
+			var choice = minimax(board,depth, player_turn);
+			if(choice.score > bestScore){
+				bestScore = choice.score;
+				bestDepth = choice.depth;
+				bestMove = move;
+			}else if(choice.score == bestScore){
+				if(choice.depth < bestDepth){
+					bestScore = choice.score;
+					bestDepth = choice.depth;
+					bestMove = move;
+				}
 			}
 		}
+	}else{
+		bestScore = 10000000;
+		for(move of available_moves){
+			var board = move;
+			var choice = minimax(board,depth, player_turn);
+			if(choice.score < bestScore){
+				bestScore = choice.score;
+				bestDepth = choice.depth;
+				bestMove = move;
+			}else if(choice.score == bestScore){
+				if(choice.depth < bestDepth){
+					bestScore = choice.score;
+					bestDepth = choice.depth;
+					bestMove = move;
+				}
+			}	
+		}
 	}
 
-	return {score:scores[min_score_index], move:min_score_moves, depth:min_depth};
+	return {score:bestScore, move:[bestMove], depth:bestDepth};
 }
