@@ -4,6 +4,8 @@ $(document).ready(function(){
 	model = createModel();
   	game = new TicTacToe();
   	minimax_memo = {};
+  	const BOT = -1;
+  	const TRAINER = 1;
 
  	$(".cell").click(function(){
  		if(!game.isEnded()){
@@ -14,7 +16,7 @@ $(document).ready(function(){
 	 			winner = game.checkWinner();
 	 			if(winner == null){	// Game not over
 	 				// minimax move
-	 				optimal_move = getOptimalMove(game);
+	 				optimal_move = getOptimalMove(game, BOT);
 					botTurn(game, true);
 					trainModel(model, game.getBoard(), optimal_move);
 					winner = game.checkWinner();
@@ -39,26 +41,31 @@ $(document).ready(function(){
  				if (first){	// First move is rand
 	 				rand_move = Math.random()*9 + 1;
 	 				optimal_move = training_ground.getBoard();
-	 				//optimal_move[rand_move] = 1;
-	 				optimal_move[5] = 1;
+	 				optimal_move[rand_move] = 1;
 	 				first = false;
 	 			}else{
 	 				if(cache_key in minimax_memo){
 	 					optimal_move = minimax_memo[cache_key];
 	 				}else{
-	 					optimal_move = getOptimalMove(training_ground);
+	 					optimal_move = getOptimalMove(training_ground, TRAINER);
 	 					minimax_memo[cache_key] = optimal_move;
 	 				}
 	 			}
  				training_ground.setBoard(optimal_move);
- 				if(training_ground.checkWinner() != null)
+				winner = training_ground.checkWinner();
+ 				if(winner != null){
+ 					console.log("winner: "+winner);
  					break;
+ 				}
  				// Bot
 				botTurn(training_ground, false);
 				// Training
 				const c = await trainModel(model, training_ground.getBoard(), optimal_move);
-				if(training_ground.checkWinner() != null)
+				winner = training_ground.checkWinner();
+				if( winner != null){
+ 					console.log("winner: "+winner);
  					break;
+				}
  			}
  			$("#train-progress").html("progress: "+i+"/"+n_rounds);
  		}
@@ -188,7 +195,7 @@ class TicTacToe{
 	}
 }
 
-function getOptimalMove(game){
+function getOptimalMove(game, player){
 	var board = game.getBoard();
 	// Test
 	var depth = 0;
@@ -197,7 +204,7 @@ function getOptimalMove(game){
 			depth++;
 		}
 	}
-	optimal_board = minimax(board, depth, -1);
+	optimal_board = minimax(board, depth, player);
 	return optimal_board.move[0];	// For now choose only the first move
 }
 
@@ -214,9 +221,8 @@ function botTurn(game, print_cell){
 	let board = game.getBoard();
 	const input_board = tf.tensor2d([board]);
 
-  	//predict_board = next_move(model, input_board);
-  	predict_board = getOptimalMove(game);	// Test
-  	console.log(predict_board);
+  	predict_board = next_move(model, input_board);
+  	//console.log(predict_board);
 
   	let move = -100;
   	let choosen_cell = -1;
@@ -224,14 +230,13 @@ function botTurn(game, print_cell){
   		/*if( predict_board[0][i] > move && board[i] == 0 ){
   			move = predict_board[0][i];
   			choosen_cell = i;*/
-  		
-  		if( predict_board[i] != board[i]){
+  		if( predict_board[i] != board[i] && board[i] == 0 ){
   			choosen_cell = i;
   			break;
   		}
   	}
 
-  	console.log(choosen_cell);
+  	//console.log(choosen_cell);
 
   	if(choosen_cell != -1){
   		game.setCell(choosen_cell, -1);
