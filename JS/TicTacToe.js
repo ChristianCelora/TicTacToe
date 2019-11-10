@@ -190,7 +190,14 @@ class TicTacToe{
 
 function getOptimalMove(game){
 	var board = game.getBoard();
-	optimal_board = minimax(board, 0, -1);
+	// Test
+	var depth = 0;
+	for (cell of board){
+		if(cell != 0){
+			depth++;
+		}
+	}
+	optimal_board = minimax(board, depth, -1);
 	return optimal_board.move[0];	// For now choose only the first move
 }
 
@@ -216,8 +223,8 @@ function botTurn(game, print_cell){
   	for(i = 0; i < board.length; i++){
   		/*if( predict_board[0][i] > move && board[i] == 0 ){
   			move = predict_board[0][i];
-  			choosen_cell = i;
-  		*/
+  			choosen_cell = i;*/
+  		
   		if( predict_board[i] != board[i]){
   			choosen_cell = i;
   			break;
@@ -287,46 +294,38 @@ function copyWeights(model, model_up){
 function minimax(board, depth, player_turn){
 	let possible_reality = new TicTacToe();
 	possible_reality.setBoard(board);
-	if(score = possible_reality.checkWinner() != null)
-			return {score:score*10, depth:depth};
+	let score = possible_reality.checkWinner()
+	if(score !== null){
+		return {score:score*10, move:[board], depth:depth};
+	}
 
-	var bestMove = null;
-	var bestDepth = 11;
+	let bestMove = null;
+	let bestDepth = 11;
+	let bestScore;
 	var available_moves = possible_reality.getAvailableMoves(player_turn);
+	var choice;
 
-	if( player_turn > 0){
+	if( player_turn > 0){	// Human
 		bestScore = -10000000;
 		for(move of available_moves){
-			var board = move;
-			var choice = minimax(board,depth+1, player_turn*-1);
-			if(choice.score > bestScore){
+			let new_board = move.slice();
+			choice = minimax(new_board, depth+1, player_turn*-1);
+			if(choice.score - choice.depth > bestScore){
 				bestScore = choice.score;
 				bestDepth = choice.depth;
-				bestMove = move;
-			}else if(choice.score == bestScore){
-				if(choice.depth < bestDepth){
-					bestScore = choice.score;
-					bestDepth = choice.depth;
-					bestMove = move;
-				}
+				bestMove = new_board;
 			}
 		}
-	}else{
+	}else{	// Bot
 		bestScore = 10000000;
 		for(move of available_moves){
-			var board = move;
-			var choice = minimax(board,depth+1, player_turn*-1);
-			if(choice.score < bestScore){
+			let new_board = move.slice();
+			choice = minimax(new_board, depth+1, player_turn*-1);
+			if(choice.score + choice.depth < bestScore){
 				bestScore = choice.score;
 				bestDepth = choice.depth;
-				bestMove = move;
-			}else if(choice.score == bestScore){
-				if(choice.depth < bestDepth){
-					bestScore = choice.score;
-					bestDepth = choice.depth;
-					bestMove = move;
-				}
-			}	
+				bestMove = new_board;
+			}
 		}
 	}
 
