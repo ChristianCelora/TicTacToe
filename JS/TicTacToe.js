@@ -14,15 +14,16 @@ $(document).ready(function(){
 	 			game.setCell(pos, 1);
 	 			printCell(pos+1, "<h1>X</h1>");
 	 			winner = game.checkWinner();
-	 			if(winner == null){	// Game not over
+	 			if(winner === null){	// Game not over
 	 				// minimax move
 	 				optimal_move = getOptimalMove(game, BOT);
+ 					let input_board = game.getBoard(); // Test
 					botTurn(game, true);
-					trainModel(model, game.getBoard(), optimal_move);
+					trainModel(model, input_board, optimal_move);
 					winner = game.checkWinner();
 				}	
 				printResults(winner);
-				if(winner != null){
+				if(winner !== null){
 					game.end();
 				}
 	 		}
@@ -36,10 +37,10 @@ $(document).ready(function(){
   			training_ground = new TicTacToe();
   			first = true;
  			while(!training_ground.isEnded()){
- 				// Minimax trainer ( with chaching )
+ 				// Minimax trainer
  				let cache_key = training_ground.getBoard().join("");
  				if (first){	// First move is rand
-	 				rand_move = Math.random()*9 + 1;
+	 				rand_move = Math.round(Math.random()*8);
 	 				optimal_move = training_ground.getBoard();
 	 				optimal_move[rand_move] = 1;
 	 				first = false;
@@ -53,16 +54,17 @@ $(document).ready(function(){
 	 			}
  				training_ground.setBoard(optimal_move);
 				winner = training_ground.checkWinner();
- 				if(winner != null){
+ 				if(winner !== null){
  					console.log("winner: "+winner);
  					break;
  				}
  				// Bot
+ 				let input_board = training_ground.getBoard(); // Test
 				botTurn(training_ground, false);
 				// Training
-				const c = await trainModel(model, training_ground.getBoard(), optimal_move);
+				const c = await trainModel(model, input_board, optimal_move);
 				winner = training_ground.checkWinner();
-				if( winner != null){
+				if( winner !== null){
  					console.log("winner: "+winner);
  					break;
 				}
@@ -208,43 +210,34 @@ function getOptimalMove(game, player){
 	return optimal_board.move[0];	// For now choose only the first move
 }
 
-/*function getMove(old_board, new_board){
-	for (var i = 0; i < old_board.length; i++) {
-		if(old_board[i] != new_board[i]){
-			return i;
-		}
-	}
-	return -1;
-}*/
 /* AI */
 function botTurn(game, print_cell){
 	let board = game.getBoard();
 	const input_board = tf.tensor2d([board]);
-
-  	predict_board = next_move(model, input_board);
-  	//console.log(predict_board);
-
-  	let move = -100;
+	let max_predict_avail = -100;
   	let choosen_cell = -1;
+
+  	predict_board = next_move(model, input_board)[0];
+  	
   	for(i = 0; i < board.length; i++){
-  		/*if( predict_board[0][i] > move && board[i] == 0 ){
-  			move = predict_board[0][i];
-  			choosen_cell = i;*/
-  		if( predict_board[i] != board[i] && board[i] == 0 ){
+  		if(isBetterMove(max_predict_avail, predict_board[i], board[i])){
+  			max_predict_avail = predict_board[i];
   			choosen_cell = i;
-  			break;
   		}
   	}
 
-  	//console.log(choosen_cell);
-
   	if(choosen_cell != -1){
   		game.setCell(choosen_cell, -1);
-  	}
+  		if(print_cell){
+ 			printCell(choosen_cell+1, "<h1>O</h1>"); 	
+ 		}
+  	}else{
+  		throw "No moves available";
+  	} 	
+}
 
- 	if(print_cell){
- 		printCell(choosen_cell+1, "<h1>O</h1>"); 	
- 	}
+function isBetterMove(max, current, prev_value){
+	return (max < current && current != prev_value && prev_value == 0);
 }
 
 function createModel(){
